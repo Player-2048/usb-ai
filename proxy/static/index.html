@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal AI</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div id="app">
+        <header id="header">
+            <span id="brand">Personal AI</span>
+            <select id="provider-select">
+                <option value="deepseek">DeepSeek</option>
+                <option value="openai">GPT</option>
+                <option value="claude">Claude</option>
+                <option value="groq">Groq</option>
+            </select>
+            <span id="model-display">deepseek-chat</span>
+            <a href="/settings" id="settings-link" title="设置">⚙️</a>
+        </header>
+
+        <main id="chat-area">
+            <div id="welcome">
+                <h2>Personal AI</h2>
+                <p>选择一个供应商，开始对话。</p>
+                <p class="hint">所有对话将自动保存在本地。</p>
+            </div>
+            <div id="messages"></div>
+        </main>
+
+        <footer id="input-area">
+            <textarea id="message-input" rows="2" placeholder="输入消息..." disabled></textarea>
+            <button id="send-btn" disabled>发送</button>
+        </footer>
+        <button id="history-toggle" title="历史记录">📋</button>
+    </div>
+
+    <!-- History side panel -->
+    <div id="history-panel" class="hidden">
+        <div id="history-header">
+            <span>历史记录</span>
+            <input type="text" id="history-search-input" placeholder="搜索对话...">
+            <button id="history-close">✕</button>
+        </div>
+        <div id="history-list"></div>
+    </div>
+
+    <div id="loading-overlay" class="hidden">
+        <div id="loading-spinner"></div>
+        <p id="loading-text">连接中...</p>
+    </div>
+
+    <div id="error-toast" class="hidden"></div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

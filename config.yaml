@@ -1,0 +1,59 @@
+server:
+  host: "127.0.0.1"
+  port: 8080
+
+ollama:
+  base_url: "http://localhost:11434"
+  model: "qwen2.5:3b"
+  timeout: 60
+
+providers:
+  - name: openai
+    endpoint: "https://api.openai.com/v1/chat/completions"
+    api_key_env: "OPENAI_API_KEY"
+    tags: [general, writing, translation, creative]
+    models:
+      - gpt-4o
+      - gpt-4o-mini
+      - gpt-4-turbo
+
+  - name: claude
+    endpoint: "https://api.anthropic.com/v1/messages"
+    api_key_env: "ANTHROPIC_API_KEY"
+    tags: [coding, architecture, review, analysis]
+    models:
+      - claude-sonnet-4-6
+      - claude-opus-4-7
+      - claude-haiku-4-5
+
+  - name: deepseek
+    endpoint: "https://api.deepseek.com/v1/chat/completions"
+    api_key_env: "DEEPSEEK_API_KEY"
+    tags: [math, reasoning, coding]
+    models:
+      - deepseek-chat
+      - deepseek-reasoner
+
+  - name: groq
+    endpoint: "https://api.groq.com/openai/v1/chat/completions"
+    api_key_env: "GROQ_API_KEY"
+    tags: [fast, general, coding]
+    models:
+      - llama-3.3-70b
+      - mixtral-8x7b
+
+default_provider: openai
+default_model: gpt-4o-mini
+
+routing:
+  rules:
+    - tags: [coding, architecture, review]
+      provider: claude
+    - tags: [math, reasoning]
+      provider: deepseek
+    - tags: [translation, writing, creative]
+      provider: openai
+
+database:
+  sqlite_path: "./data/logs.db"
+  chroma_path: "./data/chroma"

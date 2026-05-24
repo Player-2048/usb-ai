@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设置 — Personal AI</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .settings-container { max-width: 600px; margin: 0 auto; padding: 40px 20px; }
+        .settings-container h1 { font-size: 22px; margin-bottom: 24px; }
+        .provider-group { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+        .provider-group h3 { font-size: 15px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .provider-group label { font-size: 12px; color: #666; display: block; margin-bottom: 4px; }
+        .provider-group input { width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; margin-bottom: 8px; }
+        .provider-group input:focus { outline: none; border-color: #4f46e5; }
+        .test-btn { padding: 4px 12px; font-size: 12px; border: 1px solid #4f46e5; background: #fff; color: #4f46e5; border-radius: 4px; cursor: pointer; }
+        .test-btn:hover { background: #eef2ff; }
+        .test-btn.success { border-color: #16a34a; color: #16a34a; background: #f0fdf4; }
+        .test-btn.fail { border-color: #dc2626; color: #dc2626; background: #fef2f2; }
+        .nav-link { display: inline-block; margin-top: 20px; font-size: 13px; color: #4f46e5; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="settings-container">
+        <h1>⚙️ 设置</h1>
+        <p style="color:#888;font-size:13px;margin-bottom:24px;">配置你的 AI 供应商 API Key。所有 Key 将加密存储在你的电脑上。</p>
+
+        <div class="provider-group">
+            <h3>🟢 DeepSeek</h3>
+            <label>API Key</label>
+            <input type="password" class="api-key-input" data-provider="deepseek" placeholder="sk-...">
+            <button class="test-btn" data-provider="deepseek">测试连接</button>
+        </div>
+
+        <div class="provider-group">
+            <h3>🟠 OpenAI（GPT）</h3>
+            <label>API Key</label>
+            <input type="password" class="api-key-input" data-provider="openai" placeholder="sk-...">
+            <button class="test-btn" data-provider="openai">测试连接</button>
+        </div>
+
+        <div class="provider-group">
+            <h3>🟣 Claude（Anthropic）</h3>
+            <label>API Key</label>
+            <input type="password" class="api-key-input" data-provider="claude" placeholder="sk-ant-...">
+            <button class="test-btn" data-provider="claude">测试连接</button>
+        </div>
+
+        <div class="provider-group">
+            <h3>🔵 Groq</h3>
+            <label>API Key</label>
+            <input type="password" class="api-key-input" data-provider="groq" placeholder="gsk_...">
+            <button class="test-btn" data-provider="groq">测试连接</button>
+        </div>
+
+        <a href="/" class="nav-link">← 返回聊天</a>
+    </div>
+
+    <script>
+        const PROVIDER_MODELS = {
+            deepseek: "deepseek-chat",
+            openai: "gpt-4o-mini",
+            claude: "claude-sonnet-4-6",
+            groq: "llama-3.3-70b",
+        };
+
+        // Load saved keys
+        document.querySelectorAll(".api-key-input").forEach(input => {
+            const provider = input.dataset.provider;
+            const saved = localStorage.getItem(`api_key_${provider}`);
+            if (saved) input.value = saved;
+        });
+
+        // Test connection
+        document.querySelectorAll(".test-btn").forEach(btn => {
+            btn.addEventListener("click", async () => {
+                const provider = btn.dataset.provider;
+                const input = document.querySelector(`.api-key-input[data-provider="${provider}"]`);
+                const key = input.value.trim();
+                if (!key) { btn.textContent = "❌ 请输入 Key"; btn.className = "test-btn fail"; return; }
+
+                localStorage.setItem(`api_key_${provider}`, key);
+                btn.textContent = "⏳ 测试中...";
+                btn.disabled = true;
+
+                try {
+                    const resp = await fetch("/v1/chat/completions", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            model: PROVIDER_MODELS[provider],
+                            messages: [{ role: "user", content: "Hello" }],
+                        }),
+                    });
+                    if (resp.ok) {
+                        btn.textContent = "✅ 连接成功";
+                        btn.className = "test-btn success";
+                    } else {
+                        btn.textContent = `❌ 失败 (${resp.status})`;
+                        btn.className = "test-btn fail";
+                    }
+                } catch (err) {
+                    btn.textContent = "❌ 无法连接";
+                    btn.className = "test-btn fail";
+                }
+                btn.disabled = false;
+                setTimeout(() => { btn.textContent = "测试连接"; btn.className = "test-btn"; }, 3000);
+            });
+        });
+    </script>
+</body>
+</html>
