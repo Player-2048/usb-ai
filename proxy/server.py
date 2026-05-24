@@ -128,11 +128,55 @@ async def chat_completions(request: Request):
     messages = body.get("messages", [])
     model = body.get("model", config.default_model)
     x_router = body.get("x-router")
+    x_custom = body.get("x-custom")
 
     if not messages:
         raise HTTPException(status_code=400, detail="messages is required")
 
     request_id = f"req_{uuid.uuid4().hex[:12]}"
+
+    # Custom provider: bypass routing, call directly
+    if x_custom and isinstance(x_custom, dict):
+        endpoint = x_custom.get("endpoint")
+        api_key = x_custom.get("api_key")
+        custom_model = x_custom.get("model", model)
+        custom_name = x_custom.get("name", "custom")
+
+        if not endpoint:
+            raise HTTPException(status_code=400, detail="x-custom.endpoint is required")
+
+        logger.info(f"[{request_id}] -> custom/{custom_name} @ {endpoint}")
+
+        import httpx
+        headers = {"Content-Type": "application/json"}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+
+        outbound_body = {
+            "model": custom_model,
+            "messages": messages,
+        }
+        for key in ("temperature", "max_tokens", "top_p"):
+            if key in body:
+                outbound_body[key] = body[key]
+
+        db.log_request(request_id, messages, provider=custom_name, model=custom_model, tags="custom")
+        start = time.time()
+
+        try:
+            async with httpx.AsyncClient(timeout=120) as client:
+                resp = await client.post(endpoint, headers=headers, json=outbound_body)
+                resp.raise_for_status()
+                data = resp.json()
+        except Exception as e:
+            elapsed_ms = int((time.time() - start) * 1000)
+            db.log_response(request_id, {}, elapsed_ms, str(e))
+            raise HTTPException(status_code=502, detail=f"Custom provider error: {e}")
+
+        elapsed_ms = int((time.time() - start) * 1000)
+        data["model"] = custom_model
+        db.log_response(request_id, data, elapsed_ms, None)
+        return JSONResponse(content=data)
 
     # Route
     provider_config, resolved_model = router.resolve(messages, model, x_router)

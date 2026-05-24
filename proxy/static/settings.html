@@ -53,6 +53,20 @@
             <button class="test-btn" data-provider="groq">测试连接</button>
         </div>
 
+        <div class="provider-group" style="border: 2px dashed #4f46e5;">
+            <h3>➕ 自定义供应商</h3>
+            <label>名称（显示在下拉菜单里）</label>
+            <input type="text" id="custom-name" placeholder="例如: moonshot, groq, zhipu">
+            <label>API 地址</label>
+            <input type="url" id="custom-endpoint" placeholder="https://api.example.com/v1/chat/completions">
+            <label>模型名称</label>
+            <input type="text" id="custom-model" placeholder="gpt-4, claude-3, qwen...">
+            <label>API Key</label>
+            <input type="password" id="custom-key" placeholder="sk-...">
+            <button id="custom-add-btn" style="padding:6px 16px;background:#4f46e5;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;">添加到列表</button>
+            <div id="custom-list" style="margin-top:12px;font-size:13px;"></div>
+        </div>
+
         <a href="/" class="nav-link">← 返回聊天</a>
     </div>
 
@@ -70,6 +84,58 @@
             const saved = localStorage.getItem(`api_key_${provider}`);
             if (saved) input.value = saved;
         });
+
+        // Custom provider management
+        function renderCustomList() {
+            const list = JSON.parse(localStorage.getItem("custom_providers") || "[]");
+            const el = document.getElementById("custom-list");
+            if (!list.length) {
+                el.innerHTML = '<span style="color:#aaa;">还没有自定义供应商</span>';
+                return;
+            }
+            el.innerHTML = list.map((p, i) =>
+                `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #eee;">
+                    <span><strong>${escapeHTML(p.name)}</strong> / ${escapeHTML(p.model)}</span>
+                    <button data-idx="${i}" class="custom-del-btn" style="color:#dc2626;border:none;background:none;cursor:pointer;font-size:12px;">删除</button>
+                </div>`
+            ).join("");
+            el.querySelectorAll(".custom-del-btn").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    const idx = parseInt(btn.dataset.idx);
+                    const list2 = JSON.parse(localStorage.getItem("custom_providers") || "[]");
+                    list2.splice(idx, 1);
+                    localStorage.setItem("custom_providers", JSON.stringify(list2));
+                    renderCustomList();
+                });
+            });
+        }
+
+        function escapeHTML(str) {
+            const d = document.createElement("div");
+            d.textContent = str;
+            return d.innerHTML;
+        }
+
+        document.getElementById("custom-add-btn").addEventListener("click", () => {
+            const name = document.getElementById("custom-name").value.trim();
+            const endpoint = document.getElementById("custom-endpoint").value.trim();
+            const model = document.getElementById("custom-model").value.trim();
+            const key = document.getElementById("custom-key").value.trim();
+            if (!name || !endpoint || !model) {
+                alert("名称、API 地址和模型名称不能为空");
+                return;
+            }
+            const list = JSON.parse(localStorage.getItem("custom_providers") || "[]");
+            list.push({ name, endpoint, model, api_key: key });
+            localStorage.setItem("custom_providers", JSON.stringify(list));
+            document.getElementById("custom-name").value = "";
+            document.getElementById("custom-endpoint").value = "";
+            document.getElementById("custom-model").value = "";
+            document.getElementById("custom-key").value = "";
+            renderCustomList();
+        });
+
+        renderCustomList();
 
         // Test connection
         document.querySelectorAll(".test-btn").forEach(btn => {

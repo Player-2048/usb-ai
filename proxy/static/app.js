@@ -1,15 +1,45 @@
-// Provider -> model mapping
-const PROVIDER_MODELS = {
+// Built-in provider -> model mapping
+const BUILTIN_PROVIDERS = {
     deepseek: "deepseek-chat",
     openai: "gpt-4o-mini",
     claude: "claude-sonnet-4-6",
     groq: "llama-3.3-70b",
 };
 
+// Load custom providers from localStorage and merge
+function loadCustomProviders() {
+    const custom = JSON.parse(localStorage.getItem("custom_providers") || "[]");
+    return custom;  // array of {name, endpoint, model, api_key}
+}
+
+const customProviders = loadCustomProviders();
+
+// Populate provider dropdown
+const providerSelect = document.getElementById("provider-select");
+providerSelect.innerHTML = "";
+
+// Add built-in options
+const builtinKeys = Object.keys(BUILTIN_PROVIDERS);
+builtinKeys.forEach(key => {
+    const opt = document.createElement("option");
+    opt.value = key;
+    opt.textContent = key.charAt(0).toUpperCase() + key.slice(1);
+    providerSelect.appendChild(opt);
+});
+
+// Add custom options
+customProviders.forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = `custom:${p.name}`;
+    opt.textContent = p.name + " (自定义)";
+    providerSelect.appendChild(opt);
+});
+
 const state = {
-    provider: "deepseek",
+    provider: builtinKeys[0] || "custom:" + (customProviders[0]?.name || ""),
     messages: [],
     isLoading: false,
+    customProviders: customProviders,
 };
 
 // DOM refs
@@ -218,7 +248,13 @@ function showConfigPrompt() {
 
 function onProviderChange() {
     state.provider = providerSelect.value;
-    modelDisplay.textContent = PROVIDER_MODELS[state.provider] || "unknown";
+    if (state.provider.startsWith("custom:")) {
+        const name = state.provider.replace("custom:", "");
+        const p = state.customProviders.find(c => c.name === name);
+        modelDisplay.textContent = p ? p.model + " (自定义)" : "unknown";
+    } else {
+        modelDisplay.textContent = BUILTIN_PROVIDERS[state.provider] || "unknown";
+    }
 }
 
 function onSend() {
@@ -244,14 +280,29 @@ async function sendToAI() {
     state.isLoading = true;
     setLoading(true, "等待 AI 回复...");
 
+    let body = { messages: state.messages };
+
+    if (state.provider.startsWith("custom:")) {
+        const name = state.provider.replace("custom:", "");
+        const p = state.customProviders.find(c => c.name === name);
+        if (p) {
+            body["model"] = p.model;
+            body["x-custom"] = {
+                name: p.name,
+                endpoint: p.endpoint,
+                model: p.model,
+                api_key: p.api_key,
+            };
+        }
+    } else {
+        body["model"] = BUILTIN_PROVIDERS[state.provider] || state.provider;
+    }
+
     try {
         const resp = await fetch("/v1/chat/completions", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                model: PROVIDER_MODELS[state.provider],
-                messages: state.messages,
-            }),
+            body: JSON.stringify(body),
         });
 
         if (!resp.ok) {
